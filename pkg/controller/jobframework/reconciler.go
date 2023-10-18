@@ -473,6 +473,7 @@ func (r *JobReconciler) ensureOneWorkload(ctx context.Context, job GenericJob, o
 
 // equivalentToWorkload checks if the job corresponds to the workload
 func (r *JobReconciler) equivalentToWorkload(job GenericJob, object client.Object, wl *kueue.Workload) bool {
+	log := ctrl.LoggerFrom(context.Background()).WithValues("jobName", job.Object().GetName())
 	owner := metav1.GetControllerOf(wl)
 	// Indexes don't work in unit tests, so we explicitly check for the
 	// owner here.
@@ -485,6 +486,15 @@ func (r *JobReconciler) equivalentToWorkload(job GenericJob, object client.Objec
 	if !workload.CanBePartiallyAdmitted(wl) || !workload.HasQuotaReservation(wl) {
 		// the two sets should fully match.
 		return equality.ComparePodSetSlices(jobPodSets, wl.Spec.PodSets, true)
+	}
+	jobPriorityClass, _, _, err := r.extractPriority(context.TODO(), jobPodSets, job)
+	if err != nil {
+		log.V(2).Error(err, "[equivalentToWorkload] get extractPriority failed")
+		return false
+	}
+	if jobPriorityClass != wl.Spec.PriorityClassName {
+		log.V(2).Info("[equivalentToWorkload] Jobs and workloads have different priorities")
+		return false
 	}
 
 	// Check everything but the pod counts.
