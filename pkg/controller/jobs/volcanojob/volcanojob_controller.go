@@ -18,10 +18,11 @@ package volcanojob
 
 import (
 	"context"
+	"strings"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strings"
 	volcanoapi "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,7 +139,7 @@ func (j *VolcanoJob) ReclaimablePods() []kueue.ReclaimablePod {
 	}
 	parallelism := ptr.Deref(&j.Spec.Tasks[0].Replicas, 1)
 	log := ctrl.Log.WithName(j.Name)
-	if parallelism == 1 || j.Status.Succeeded == 0 {
+	if parallelism == 1 || (j.Status.Succeeded == 0 && j.Status.Failed == 0) {
 		return nil
 	}
 
